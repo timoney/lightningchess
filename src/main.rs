@@ -142,9 +142,9 @@ fn rocket() -> _ {
             match rocket.figment().data() {
                 Ok(map) => {
                     for (k, v) in map.iter() {
-                        println!("key {}",k);
+                        println!("key {}", k);
                         for (k2, v2) in v.into_iter() {
-                            println!("key: {}, value: {}", k2, v2.as_str().ok_or_else("none!"));
+                            println!("key: {}", k2);
                         }
                     }
                 },
