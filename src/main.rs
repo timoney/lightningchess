@@ -1,22 +1,20 @@
 #[macro_use] extern crate rocket;
 
-use std::env;
-use std::sync::atomic::Ordering;
+use std::collections::HashMap;
 use cookie::SameSite;
 use cookie::time::Duration;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Client;
 use rocket::http::{Cookie, CookieJar};
 use rocket::{Request, State};
+use rocket::fairing::AdHoc;
+use rocket::figment::Provider;
 use rocket::request::{FromRequest, Outcome};
 use rocket::response::Redirect;
+use rocket_dyn_templates::Template;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-
-use rocket::config::Config;
-use rocket::fairing::AdHoc;
-use rocket::figment::Provider;
 
 #[derive(Serialize, Deserialize)]
 struct TokenResponse {
@@ -41,8 +39,10 @@ struct AppConfig {
 }
 
 #[get("/")]
-async fn index(cookies: &CookieJar<'_>) -> &'static str {
-    "hi"
+fn index() -> Template {
+    let mut context = HashMap::new();
+    context.insert("foo", "Hello, world!");
+    Template::render("index", &context)
 }
 
 #[get("/profile")]
@@ -162,6 +162,7 @@ fn rocket() -> _ {
             }
         }))
         .mount("/", routes![index, login, callback, profile])
+        .attach(Template::fairing())
 }
 
 #[rocket::async_trait]
