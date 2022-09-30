@@ -6,6 +6,7 @@ RUN cargo install --path .
 FROM debian:buster-slim as runner
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget gcc libssl-dev libc6-dev
 COPY --from=builder /usr/local/cargo/bin/lightningchess /usr/local/bin/lightningchess
+COPY --from=builder /app/Rocket.toml ./Rocket.toml
 ENV ROCKET_ADDRESS=0.0.0.0
 EXPOSE 8000
 CMD ["lightningchess"]
