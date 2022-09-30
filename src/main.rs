@@ -1,12 +1,13 @@
 #[macro_use] extern crate rocket;
 
 use std::env;
+use std::sync::atomic::Ordering;
 use cookie::SameSite;
 use cookie::time::Duration;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Client;
 use rocket::http::{Cookie, CookieJar};
-use rocket::Request;
+use rocket::{Request, State};
 use rocket::request::{FromRequest, Outcome};
 use rocket::response::Redirect;
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 
 use rocket::config::Config;
+use rocket::fairing::AdHoc;
 
 #[derive(Serialize, Deserialize)]
 struct TokenResponse {
@@ -33,6 +35,10 @@ struct User {
     username: String,
 }
 
+struct AppConfig {
+    host: String
+}
+
 #[get("/")]
 async fn index(cookies: &CookieJar<'_>) -> &'static str {
     "hi"
@@ -44,8 +50,9 @@ async fn profile(user: User) -> String {
 }
 
 #[get("/login")]
-fn login(cookies: &CookieJar<'_>) -> Redirect {
-    let redirect_uri = "http://localhost:8000/callback";
+fn login(app_config: &State<AppConfig>, cookies: &CookieJar<'_>) -> Redirect {
+    let host = &app_config.host;
+    let redirect_uri = format!("http://{host}:8000/callback");
 
     // generate code verifier and challenge
     let rand: Vec<u8>  = rand::thread_rng()
@@ -75,7 +82,9 @@ fn login(cookies: &CookieJar<'_>) -> Redirect {
 }
 
 #[get("/callback?<code>")]
-async fn callback(code: String, cookies: &CookieJar<'_>) -> Option<Redirect> {
+async fn callback(code: String, app_config: &State<AppConfig>, cookies: &CookieJar<'_>) -> Option<Redirect> {
+    let host = &app_config.host;
+    let redirect_uri = format!("http://{host}:8000/callback");
     let code_verifier: String = match cookies.get_private("codeVerifier") {
         Some(cookie) => {
             let cv = cookie.value().to_string();
@@ -87,7 +96,7 @@ async fn callback(code: String, cookies: &CookieJar<'_>) -> Option<Redirect> {
 
     let body = json!({
         "grant_type": "authorization_code",
-        "redirect_uri": "http://localhost:8000/callback",
+        "redirect_uri": redirect_uri,
         "client_id": "lightningchess",
         "code": code,
         "code_verifier": code_verifier
@@ -128,6 +137,17 @@ async fn callback(code: String, cookies: &CookieJar<'_>) -> Option<Redirect> {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
+        .attach(AdHoc::try_on_ignite("appConfig", |rocket| async {
+            match rocket.figment().extract_inner("app_host") {
+                Ok(value) => {
+                    info!("api host: {value}");
+                    Ok(rocket.manage(AppConfig { host: value } ))
+                },
+                Err(_) => {
+                    Err(rocket)
+                }
+            }
+        }))
         .mount("/", routes![index, login, callback, profile])
 }
 
