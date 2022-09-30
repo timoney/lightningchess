@@ -20,6 +20,7 @@ struct TokenResponse {
     access_token: String
 }
 
+
 #[derive(Serialize, Deserialize)]
 struct Account {
     username: String
