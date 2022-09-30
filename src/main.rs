@@ -37,7 +37,7 @@ struct User {
 }
 
 struct AppConfig {
-    host: String
+    url: String
 }
 
 #[get("/")]
@@ -52,8 +52,7 @@ async fn profile(user: User) -> String {
 
 #[get("/login")]
 fn login(app_config: &State<AppConfig>, cookies: &CookieJar<'_>) -> Redirect {
-    let host = &app_config.host;
-    let redirect_uri = format!("{host}:8000/callback");
+    let redirect_uri = format!("{}/callback", &app_config.url);
 
     // generate code verifier and challenge
     let rand: Vec<u8>  = rand::thread_rng()
@@ -84,8 +83,7 @@ fn login(app_config: &State<AppConfig>, cookies: &CookieJar<'_>) -> Redirect {
 
 #[get("/callback?<code>")]
 async fn callback(code: String, app_config: &State<AppConfig>, cookies: &CookieJar<'_>) -> Option<Redirect> {
-    let host = &app_config.host;
-    let redirect_uri = format!("http://{host}:8000/callback");
+    let redirect_uri = format!("{}/callback", &app_config.url);
     let code_verifier: String = match cookies.get_private("codeVerifier") {
         Some(cookie) => {
             let cv = cookie.value().to_string();
@@ -126,7 +124,7 @@ async fn callback(code: String, app_config: &State<AppConfig>, cookies: &CookieJ
                     println!("error:\n{}", e);
                 }
             };
-            Some(Redirect::to(format!("http://localhost:8000")))
+            Some(Redirect::to(format!("{}", &app_config.url)))
         },
         Err(e) => {
             println!("error:\n{}", e);
@@ -152,10 +150,10 @@ fn rocket() -> _ {
                     info!("error data: {e}");
                 }
             }
-            match rocket.figment().extract_inner("app_host") {
+            match rocket.figment().extract_inner("url") {
                 Ok(value) => {
                     info!("api host: {value}");
-                    Ok(rocket.manage(AppConfig { host: value } ))
+                    Ok(rocket.manage(AppConfig { url: value } ))
                 },
                 Err(e) => {
                     info!("error: {e}");
