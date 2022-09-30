@@ -16,6 +16,7 @@ use sha2::{Digest, Sha256};
 
 use rocket::config::Config;
 use rocket::fairing::AdHoc;
+use rocket::figment::Provider;
 
 #[derive(Serialize, Deserialize)]
 struct TokenResponse {
@@ -52,7 +53,7 @@ async fn profile(user: User) -> String {
 #[get("/login")]
 fn login(app_config: &State<AppConfig>, cookies: &CookieJar<'_>) -> Redirect {
     let host = &app_config.host;
-    let redirect_uri = format!("http://{host}:8000/callback");
+    let redirect_uri = format!("{host}:8000/callback");
 
     // generate code verifier and challenge
     let rand: Vec<u8>  = rand::thread_rng()
@@ -138,6 +139,19 @@ async fn callback(code: String, app_config: &State<AppConfig>, cookies: &CookieJ
 fn rocket() -> _ {
     rocket::build()
         .attach(AdHoc::try_on_ignite("appConfig", |rocket| async {
+            match rocket.figment().data() {
+                Ok(map) => {
+                    for (k, v) in map.iter() {
+                        println!("key {}",k);
+                        for (k2, v2) in v.into_iter() {
+                            println!("key: {}, value: {}", k2, v2.as_str().ok_or_else("none!"));
+                        }
+                    }
+                },
+                Err(e) => {
+                    info!("error data: {e}");
+                }
+            }
             match rocket.figment().extract_inner("app_host") {
                 Ok(value) => {
                     info!("api host: {value}");

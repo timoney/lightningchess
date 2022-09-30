@@ -1,5 +1,5 @@
 [debug]
-app_host= "localhost"
+app_host= "http://localhost"
 
 [release]
 app_host= "https://lightningchess-uq3lf7yjga-uc.a.run.app"
