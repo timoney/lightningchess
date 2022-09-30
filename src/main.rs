@@ -1,14 +1,19 @@
 #[macro_use] extern crate rocket;
 
+use std::env;
 use cookie::SameSite;
 use cookie::time::Duration;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Client;
 use rocket::http::{Cookie, CookieJar};
+use rocket::Request;
+use rocket::request::{FromRequest, Outcome};
 use rocket::response::Redirect;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
+
+use rocket::config::Config;
 
 #[derive(Serialize, Deserialize)]
 struct TokenResponse {
@@ -20,44 +25,22 @@ struct Account {
     username: String
 }
 
+struct ProfileInfo {
+    username: String
+}
+struct User {
+    access_token: String,
+    username: String,
+}
+
 #[get("/")]
-async fn index(cookies: &CookieJar<'_>) -> String {
-    let access_token = cookies.get("access_token").map(|c| c.value());
-    match access_token {
-        Some(token) => {
-            let bearer = format!("Bearer {token}");
-            println!("authorization?: {bearer}");
-            let response = Client::new()
-                .get("https://lichess.org/api/account")
-                .header("Authorization", bearer)
-                .send().await;
-            return match response {
-                Ok(res) => {
-                    println!("Status: {}", res.status());
-                    println!("Headers:\n{:#?}", res.headers());
-                    let text = res.text().await;
-                    match text {
-                        Ok(text) => {
-                            let account: Account = serde_json::from_str(&text).unwrap();
-                            let username = account.username;
-                            format!("Hi {username}!")
-                        }
-                        Err(e) => {
-                            println!("error:\n{}", e);
-                            "error".to_string()
-                        }
-                    }
-                },
-                Err(e) => {
-                    println!("error:\n{}", e);
-                    "error".to_string()
-                }
-            }
-        }
-        None => {
-            "No token".to_string()
-        }
-    }
+async fn index(cookies: &CookieJar<'_>) -> &'static str {
+    "hi"
+}
+
+#[get("/profile")]
+async fn profile(user: User) -> String {
+    user.username
 }
 
 #[get("/login")]
@@ -145,5 +128,47 @@ async fn callback(code: String, cookies: &CookieJar<'_>) -> Option<Redirect> {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![index, login, callback])
+        .mount("/", routes![index, login, callback, profile])
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for User {
+    type Error = ();
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let access_token = request.cookies().get("access_token").map(|c| c.value());
+        match access_token {
+            Some(token) => {
+                let bearer = format!("Bearer {token}");
+                let response = Client::new()
+                    .get("https://lichess.org/api/account")
+                    .header("Authorization", bearer)
+                    .send().await;
+                match response {
+                    Ok(res) => {
+                        println!("Status: {}", res.status());
+                        println!("Headers:\n{:#?}", res.headers());
+                        let text = res.text().await;
+                        match text {
+                            Ok(text) => {
+                                let account: Account = serde_json::from_str(&text).unwrap();
+                                Outcome::Success(User { access_token: token.to_string(), username: account.username})
+                            }
+                            Err(e) => {
+                                println!("error in text():\n{}", e);
+                                Outcome::Forward(())
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        println!("error from api/account:\n{}", e);
+                        Outcome::Forward(())
+                    }
+                }
+            }
+            None => {
+                println!("no access token\n");
+                Outcome::Forward(())
+            }
+        }
+    }
 }
