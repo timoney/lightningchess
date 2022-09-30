@@ -143,7 +143,8 @@ fn rocket() -> _ {
                     info!("api host: {value}");
                     Ok(rocket.manage(AppConfig { host: value } ))
                 },
-                Err(_) => {
+                Err(e) => {
+                    info!("error: {e}");
                     Err(rocket)
                 }
             }
