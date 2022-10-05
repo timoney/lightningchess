@@ -35,13 +35,14 @@ struct User {
 }
 
 struct AppConfig {
-    url: String
+    url: String,
+    fe_url: String
 }
 
 #[get("/")]
-fn index() -> Template {
+fn index(app_config: &State<AppConfig>,) -> Template {
     let mut context = HashMap::new();
-    context.insert("foo", "Hello, world!");
+    context.insert("fe_url", app_config.fe_url.to_string());
     Template::render("index", &context)
 }
 
@@ -150,10 +151,21 @@ fn rocket() -> _ {
                     info!("error data: {e}");
                 }
             }
+            let fe_url: String = match rocket.figment().extract_inner::<String>("fe_url") {
+                Ok(value) => {
+                    info!("fe url: {value}");
+                    value
+                },
+                Err(e) => {
+                    info!("error: {e}");
+                    "".to_string()
+                }
+            };
+
             match rocket.figment().extract_inner("url") {
                 Ok(value) => {
                     info!("api host: {value}");
-                    Ok(rocket.manage(AppConfig { url: value } ))
+                    Ok(rocket.manage(AppConfig { url: value, fe_url } ))
                 },
                 Err(e) => {
                     info!("error: {e}");
