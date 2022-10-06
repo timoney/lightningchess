@@ -26,7 +26,8 @@ struct Account {
     username: String
 }
 
-struct ProfileInfo {
+#[derive(Serialize, Deserialize)]
+struct UserProfile {
     username: String
 }
 struct User {
@@ -48,7 +49,10 @@ fn index(app_config: &State<AppConfig>,) -> Template {
 
 #[get("/profile")]
 async fn profile(user: User) -> String {
-    user.username
+    let userProfile: UserProfile = UserProfile {
+        username: user.username
+    };
+    serde_json::to_string(&userProfile).unwrap()
 }
 
 #[get("/login")]
@@ -113,6 +117,7 @@ async fn callback(code: String, app_config: &State<AppConfig>, cookies: &CookieJ
 
             match res.text().await {
                 Ok(text) => {
+                    println!("text!: {}", text);
                     let token_response: TokenResponse = serde_json::from_str(&text).unwrap();
                     let cookie = Cookie::build("access_token", token_response.access_token)
                         .same_site(SameSite::None)
