@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
+pub mod guard;
+
 #[derive(Serialize, Deserialize)]
 struct TokenResponse {
     access_token: String
@@ -40,6 +42,16 @@ struct AppConfig {
     fe_url: String
 }
 
+#[derive(Serialize, Deserialize)]
+struct Challenge {
+    opponent: String,
+    limit: String,
+    opponent_limit: String,
+    increment: String,
+    challenger_color: String,
+    sats: String,
+}
+
 #[get("/")]
 fn index(app_config: &State<AppConfig>,) -> Template {
     let mut context = HashMap::new();
@@ -53,6 +65,13 @@ async fn profile(user: User) -> String {
         username: user.username
     };
     serde_json::to_string(&userProfile).unwrap()
+}
+
+#[post("/api/challenge", data = "<challenge_request>")]
+async fn challenge(challenge_request: String) {
+    println!("challenge request!: {}", challenge_request);
+    let challenge: Challenge = serde_json::from_str(&challenge_request).unwrap();
+    println!("challenge!{}", serde_json::to_string(&challenge).unwrap())
 }
 
 #[get("/login")]
@@ -80,7 +99,7 @@ fn login(app_config: &State<AppConfig>, cookies: &CookieJar<'_>) -> Redirect {
        response_type=code&\
        client_id=lightningchess&\
        redirect_uri={redirect_uri}&\
-       scope=preference:read&\
+       scope=preference:read%20challenge:write&\
        code_challenge_method=S256&\
        code_challenge={challenge}")
     )
@@ -95,7 +114,10 @@ async fn callback(code: String, app_config: &State<AppConfig>, cookies: &CookieJ
             cookies.remove_private(cookie);
             cv
         }
-        None => "".to_string()
+        None => {
+            println!("No code verifier found!");
+            "".to_string()
+        }
     };
 
     let body = json!({
@@ -178,48 +200,6 @@ fn rocket() -> _ {
                 }
             }
         }))
-        .mount("/", routes![index, login, callback, profile])
+        .mount("/", routes![index, login, callback, profile, challenge])
         .attach(Template::fairing())
-}
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for User {
-    type Error = ();
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let access_token = request.cookies().get("access_token").map(|c| c.value());
-        match access_token {
-            Some(token) => {
-                let bearer = format!("Bearer {token}");
-                let response = Client::new()
-                    .get("https://lichess.org/api/account")
-                    .header("Authorization", bearer)
-                    .send().await;
-                match response {
-                    Ok(res) => {
-                        println!("Status: {}", res.status());
-                        println!("Headers:\n{:#?}", res.headers());
-                        let text = res.text().await;
-                        match text {
-                            Ok(text) => {
-                                let account: Account = serde_json::from_str(&text).unwrap();
-                                Outcome::Success(User { access_token: token.to_string(), username: account.username})
-                            }
-                            Err(e) => {
-                                println!("error in text():\n{}", e);
-                                Outcome::Forward(())
-                            }
-                        }
-                    },
-                    Err(e) => {
-                        println!("error from api/account:\n{}", e);
-                        Outcome::Forward(())
-                    }
-                }
-            }
-            None => {
-                println!("no access token\n");
-                Outcome::Forward(())
-            }
-        }
-    }
 }
