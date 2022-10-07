@@ -52,6 +52,30 @@ struct Challenge {
     sats: String,
 }
 
+#[derive(Serialize, Deserialize)]
+struct LichessChallengeClock {
+    limit: String,
+    increment: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct LichessChallenge {
+    rated: bool,
+    clock: LichessChallengeClock,
+    color: String,
+    variant: String,
+    rules: String,
+}
+#[derive(Serialize, Deserialize)]
+struct Url {
+    url: String
+}
+
+#[derive(Serialize, Deserialize)]
+struct LichessChallengeResponse {
+    challenge: Url
+}
+
 #[get("/")]
 fn index(app_config: &State<AppConfig>,) -> Template {
     let mut context = HashMap::new();
@@ -68,10 +92,55 @@ async fn profile(user: User) -> String {
 }
 
 #[post("/api/challenge", data = "<challenge_request>")]
-async fn challenge(challenge_request: String) {
+async fn challenge(challenge_request: String, cookies: &CookieJar<'_>) -> String {
     println!("challenge request!: {}", challenge_request);
     let challenge: Challenge = serde_json::from_str(&challenge_request).unwrap();
-    println!("challenge!{}", serde_json::to_string(&challenge).unwrap())
+    println!("challenge!{}", serde_json::to_string(&challenge).unwrap());
+    let url = format!("https://lichess.org/api/challenge/{}", &challenge.opponent);
+    let access_token = cookies.get("access_token").map(|c| c.value()).unwrap();
+    let bearer = format!("Bearer {access_token}");
+    let body = LichessChallenge {
+        rated: true,
+        clock: LichessChallengeClock {
+            limit: challenge.limit,
+            increment: challenge.increment,
+        },
+        color: challenge.challenger_color,
+        variant: "standard".to_string(),
+        rules: "noClaimWin".to_string(),
+    };
+    println!("url: {}", url);
+    println!("body: {}", serde_json::to_string(&body).unwrap());
+    println!("bearer: {}", bearer);
+    let resp = Client::new()
+        .post(url)
+        .json(&body)
+        .header("Authorization", bearer)
+        .send().await;
+
+    return match resp {
+        Ok(res) => {
+            println!("Status: {}", res.status());
+            println!("Headers:\n{:#?}", res.headers());
+
+            let text = res.text().await;
+            match text {
+                Ok(text) => {
+                    println!("text!: {}", text);
+                    let resp: LichessChallengeResponse = serde_json::from_str(&text).unwrap();
+                    serde_json::to_string(&resp).unwrap()
+                }
+                Err(e) => {
+                    println!("error:\n{}", e);
+                    "error:(".to_string()
+                }
+            }
+        },
+        Err(error) => {
+            println!("error:\n{}", error);
+            "error:(:(".to_string()
+        }
+    }
 }
 
 #[get("/login")]
