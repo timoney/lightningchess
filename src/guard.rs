@@ -1,8 +1,9 @@
+
 pub mod auth {
     use reqwest::Client;
     use rocket::Request;
     use rocket::request::{FromRequest, Outcome};
-    use crate::{Account, User};
+    use crate::models::{Account, User};
 
     #[rocket::async_trait]
     impl<'r> FromRequest<'r> for User {
