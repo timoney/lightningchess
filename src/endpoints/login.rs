@@ -1,7 +1,7 @@
 use cookie::SameSite;
 use cookie::time::Duration;
 use rand::{distributions::Alphanumeric, Rng};
-use rocket::{Request, State};
+use rocket::{State};
 use rocket::http::{Cookie, CookieJar};
 use rocket::response::Redirect;
 use sha2::{Digest, Sha256};

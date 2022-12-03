@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use sqlx::types::chrono::NaiveDateTime;
+use sqlx::FromRow;
 
 #[derive(Serialize, Deserialize)]
 pub struct Account {
@@ -10,14 +12,35 @@ pub struct AppConfig {
     pub fe_url: String
 }
 
-#[derive(Serialize, Deserialize)]
+fn default_string() -> String {
+    "".to_string()
+}
+fn default_i32() -> i32 {
+    0
+}
+
+#[derive(Serialize, Deserialize, FromRow)]
 pub struct Challenge {
-    pub opponent: String,
-    pub limit: u32, // seconds
-    pub opponent_limit: u32, // seconds
-    pub increment: u32, // seconds
-    pub color: String,
-    pub sats: u32,
+    #[serde(default = "default_i32")]
+    pub id: i32,
+    #[serde(default = "default_string")]
+    pub username: String,
+    pub time_limit: Option<i32>, // seconds
+    pub opponent_time_limit: Option<i32>, // seconds
+    pub increment: Option<i32>, // seconds
+    pub color: Option<String>,
+    pub sats: Option<i64>,
+    pub opp_username: String,
+    pub status: Option<String>,
+    pub lichess_challenge_id: Option<String>,
+    pub result: Option<String>,
+    pub created_on: Option<NaiveDateTime>, // UTC
+    pub expire_after: Option<i32> // seconds
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ChallengeAccept {
+    pub id: i32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -41,12 +64,18 @@ pub struct LichessChallengeResponse {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct LichessChallengeAcceptResponse {
+    pub ok: bool
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct TokenResponse {
     pub access_token: String
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Url {
+    pub id: String,
     pub url: String
 }
 
