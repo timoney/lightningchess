@@ -14,8 +14,15 @@ use sqlx::postgres::PgPoolOptions;
 
 pub mod guard;
 pub mod models;
+pub mod lightning;
 pub mod endpoints;
 pub mod config;
+pub mod invoicesrpc {
+    tonic::include_proto!("invoicesrpc");
+}
+pub mod lnrpc {
+    tonic::include_proto!("lnrpc");
+}
 
 #[get("/")]
 async fn index(app_config: &State<AppConfig>) -> Template {

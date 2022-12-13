@@ -1,9 +1,10 @@
 use reqwest::Client;
-use rocket::http::{Cookie, CookieJar, Status};
+use rocket::http::{Status};
 use rocket::State;
 use crate::models::{Challenge, ChallengeAccept, LichessChallenge, LichessChallengeClock, LichessChallengeResponse, User};
 use sqlx::Postgres;
 use sqlx::Pool;
+use crate::lightning::invoices::add_invoice;
 
 #[post("/api/challenge", data = "<challenge_request>")]
 pub async fn challenge(user: User, pool: &State<Pool<Postgres>>, challenge_request: String) -> Result<String, Status> {
@@ -19,9 +20,16 @@ pub async fn challenge(user: User, pool: &State<Pool<Postgres>>, challenge_reque
 
     println!("challenge!{}", serde_json::to_string(&challenge).unwrap());
 
+    // create invoice
+    let invoice_option = add_invoice(challenge.sats.unwrap()).await;
+    let invoice = match invoice_option {
+        Some(i) => i,
+        None => return Err(Status::InternalServerError)
+    };
+
     // save challenge to db
-    let status = "WAITING";
-    let pg_query_result = sqlx::query_as::<_,Challenge>("INSERT INTO challenge (username, time_limit, opponent_time_limit, increment, color, sats, opp_username, status, expire_after) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *")
+    let status = "WAITING FOR PAYMENT";
+    let pg_query_result = sqlx::query_as::<_,Challenge>("INSERT INTO challenge (username, time_limit, opponent_time_limit, increment, color, sats, opp_username, status, expire_after, payment_addr, payment_request) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
         .bind(&user.username)
         .bind(&challenge.time_limit)
         .bind(&challenge.opponent_time_limit)
@@ -31,6 +39,8 @@ pub async fn challenge(user: User, pool: &State<Pool<Postgres>>, challenge_reque
         .bind(&challenge.opp_username)
         .bind(status)
         .bind(&challenge.expire_after)
+        .bind(&invoice.payment_addr)
+        .bind(&invoice.payment_request)
         .fetch_one(&**pool).await;
 
     return match pg_query_result {

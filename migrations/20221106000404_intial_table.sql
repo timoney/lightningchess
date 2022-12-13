@@ -12,7 +12,11 @@ CREATE TABLE IF NOT EXISTS challenge (
 	lichess_challenge_id VARCHAR (255),
 	result VARCHAR (255),
 	created_on TIMESTAMP without time zone default (now() at time zone 'utc'),
-	expire_after INT
+	expire_after INT,
+	payment_addr VARCHAR (255),
+  payment_request VARCHAR (510),
+  opp_payment_addr VARCHAR (255),
+  opp_payment_request VARCHAR (510)
 );
 
 CREATE INDEX IF NOT EXISTS challenge_username_idx ON challenge(username);

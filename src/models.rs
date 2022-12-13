@@ -12,6 +12,10 @@ pub struct AppConfig {
     pub fe_url: String
 }
 
+pub struct EnvVariables {
+    pub macaroon: String // hex encoded
+}
+
 fn default_string() -> String {
     "".to_string()
 }
@@ -35,7 +39,11 @@ pub struct Challenge {
     pub lichess_challenge_id: Option<String>,
     pub result: Option<String>,
     pub created_on: Option<NaiveDateTime>, // UTC
-    pub expire_after: Option<i32> // seconds
+    pub expire_after: Option<i32>, // seconds,
+    pub payment_addr: Option<String>,
+    pub payment_request: Option<String>,
+    pub opp_payment_addr: Option<String>,
+    pub opp_payment_request: Option<String>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -89,3 +97,10 @@ pub struct UserProfile {
     pub username: String
 }
 
+// LND
+#[derive(Serialize, Deserialize)]
+pub struct AddHoldInvoiceResponse {
+    pub payment_request: String,
+    pub add_index: String,
+    pub payment_addr: String
+}
