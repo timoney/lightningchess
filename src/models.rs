@@ -39,15 +39,34 @@ pub struct Challenge {
     pub lichess_challenge_id: Option<String>,
     pub result: Option<String>,
     pub created_on: Option<NaiveDateTime>, // UTC
-    pub expire_after: Option<i32>, // seconds,
-    pub payment_addr: Option<String>,
-    pub payment_request: Option<String>,
-    pub opp_payment_addr: Option<String>,
-    pub opp_payment_request: Option<String>
+    pub expire_after: Option<i32> // seconds
 }
 
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct Transaction {
+    #[serde(default = "default_i32")]
+    pub transaction_id: i32,
+    #[serde(default = "default_string")]
+    pub username: String,
+    pub ttype: String,
+    pub detail: String,
+    pub amount: i64,
+    pub state: String,
+    pub preimage: Option<String>, // base64 encoded
+    pub payment_addr: Option<String>, // base64 encoded
+    pub payment_request: Option<String>
+}
+
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct Balance {
+    #[serde(default = "default_i32")]
+    pub balance_id: i32,
+    #[serde(default = "default_string")]
+    pub username: String,
+    pub balance: i64
+}
 #[derive(Serialize, Deserialize)]
-pub struct ChallengeAccept {
+pub struct ChallengeAcceptRequest {
     pub id: i32,
 }
 
@@ -64,6 +83,11 @@ pub struct LichessChallenge {
 pub struct LichessChallengeClock {
     pub limit: String,
     pub increment: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AddInvoiceRequest {
+    pub sats: i64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -97,10 +121,28 @@ pub struct UserProfile {
     pub username: String
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct LookupInvoice {
+    pub payment_addr: String
+}
+
 // LND
 #[derive(Serialize, Deserialize)]
-pub struct AddHoldInvoiceResponse {
+pub struct AddInvoiceResponse {
     pub payment_request: String,
     pub add_index: String,
     pub payment_addr: String
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LookupInvoiceResponse {
+    pub memo: String,
+    pub value: String,
+    pub settled: bool,
+    pub creation_date: String,
+    pub settle_date: String,
+    pub payment_request: String,
+    pub expiry: String,
+    pub amt_paid_sat: String,
+    pub state: String
 }

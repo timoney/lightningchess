@@ -2,7 +2,8 @@
 
 use crate::config::parse_config;
 use crate::endpoints::callback::callback;
-use crate::endpoints::challenge::{challenge, challenge_accept, challenges};
+use crate::endpoints::challenge::{accept_challenge, create_challenge, lookup_challenge, challenges};
+use crate::endpoints::money::{add_invoice_endpoint, balance, transactions};
 use crate::endpoints::login::login;
 use crate::endpoints::profile::profile;
 use crate::models::AppConfig;
@@ -17,12 +18,6 @@ pub mod models;
 pub mod lightning;
 pub mod endpoints;
 pub mod config;
-pub mod invoicesrpc {
-    tonic::include_proto!("invoicesrpc");
-}
-pub mod lnrpc {
-    tonic::include_proto!("lnrpc");
-}
 
 #[get("/")]
 async fn index(app_config: &State<AppConfig>) -> Template {
@@ -43,6 +38,17 @@ async fn rocket() -> _ {
     rocket::build()
         .attach(AdHoc::try_on_ignite("appConfig", parse_config))
         .manage(pool)
-        .mount("/", routes![index, login, callback, profile, challenge, challenge_accept, challenges])
+        .mount("/", routes![
+            index,
+            login,
+            callback,
+            profile,
+            create_challenge,
+            accept_challenge,
+            lookup_challenge,
+            challenges,
+            add_invoice_endpoint,
+            balance,
+            transactions])
         .attach(Template::fairing())
 }
