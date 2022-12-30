@@ -37,7 +37,6 @@ pub struct Challenge {
     pub opp_username: String,
     pub status: Option<String>,
     pub lichess_challenge_id: Option<String>,
-    pub result: Option<String>,
     pub created_on: Option<NaiveDateTime>, // UTC
     pub expire_after: Option<i32> // seconds
 }
@@ -54,7 +53,9 @@ pub struct Transaction {
     pub state: String,
     pub preimage: Option<String>, // base64 encoded
     pub payment_addr: Option<String>, // base64 encoded
-    pub payment_request: Option<String>
+    pub payment_request: Option<String>,
+    pub payment_hash: Option<String>,
+    pub lichess_challenge_id: Option<String>
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
@@ -91,8 +92,24 @@ pub struct AddInvoiceRequest {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct SendPaymentRequest {
+    pub payment_request: String
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct LichessChallengeResponse {
     pub challenge: Url
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LichessExportGameResponse {
+    pub id: String,
+    pub rated: bool,
+    pub variant: String,
+    pub speed: String,
+    pub perf: String,
+    pub status: String,
+    pub winner: Option<String>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -126,12 +143,32 @@ pub struct LookupInvoice {
     pub payment_addr: String
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct SendPaymentResponse {
+    pub complete: bool
+}
+
 // LND
 #[derive(Serialize, Deserialize)]
 pub struct AddInvoiceResponse {
     pub payment_request: String,
     pub add_index: String,
     pub payment_addr: String
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DecodedPayment {
+    pub destination: String,
+    pub payment_hash: String,
+    pub num_satoshis: String,
+    pub timestamp: String,
+    pub expiry: String,
+    pub description: String,
+    pub description_hash: String,
+    pub fallback_addr: String,
+    pub cltv_expiry: String,
+    pub payment_addr: String,
+    pub num_msat: String
 }
 
 #[derive(Serialize, Deserialize)]

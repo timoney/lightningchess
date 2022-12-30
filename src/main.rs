@@ -3,7 +3,7 @@
 use crate::config::parse_config;
 use crate::endpoints::callback::callback;
 use crate::endpoints::challenge::{accept_challenge, create_challenge, lookup_challenge, challenges};
-use crate::endpoints::money::{add_invoice_endpoint, balance, transactions};
+use crate::endpoints::money::{add_invoice_endpoint, balance, transactions, lookup_transaction, send_payment_endpoint};
 use crate::endpoints::login::login;
 use crate::endpoints::profile::profile;
 use crate::models::AppConfig;
@@ -49,6 +49,8 @@ async fn rocket() -> _ {
             challenges,
             add_invoice_endpoint,
             balance,
-            transactions])
+            transactions,
+            lookup_transaction,
+            send_payment_endpoint])
         .attach(Template::fairing())
 }

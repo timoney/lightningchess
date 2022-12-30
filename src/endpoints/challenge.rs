@@ -18,7 +18,7 @@ pub async fn create_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
     };
 
     // only allow creation of challenge if user has enough funds
-    let balance_result = sqlx::query_as::<_,Balance>( "SELECT balance FROM lightningchess_balance WHERE username=$1")
+    let balance_result = sqlx::query_as::<_,Balance>( "SELECT * FROM lightningchess_balance WHERE username=$1")
         .bind(&user.username)
         .fetch_one(&**pool).await;
     match balance_result {
@@ -62,42 +62,28 @@ pub async fn create_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
             Ok(serde_json::to_string(&r).unwrap())
         },
         Err(e) => {
-            println!("insert challenge error: {}", e.as_database_error().unwrap().message());
-            let rollback_result = tx.rollback().await;
-            match rollback_result {
-                Ok(_) => println!("rollback success"),
-                Err(_) => println!("rollback error")
-            }
+            println!("insert challenge error: {}", e);
             return Err(Status::InternalServerError)
         }
     };
 
     // deduct from balance
-    let balance_result = sqlx::query_as::<_,Balance>( "UPDATE lightningchess_balance SET balance=balance - $1 WHERE username=$2")
+    let balance_result = sqlx::query_as::<_,Balance>( "UPDATE lightningchess_balance SET balance=balance - $1 WHERE username=$2 RETURNING * ")
         .bind(challenge.sats.unwrap())
         .bind(&user.username)
         .fetch_one(&mut tx).await;
 
     match balance_result {
         Ok(balance) => {
+            // just another check
             if balance.balance < 0 {
                 println!("balance is less than 0");
-                let rollback_result = tx.rollback().await;
-                match rollback_result {
-                    Ok(_) => println!("rollback success"),
-                    Err(_) => println!("rollback error")
-                }
                 return Err(Status::InternalServerError)
             }
             println!("updated balance")
         },
         Err(e) => {
             println!("error updating balance: {}", e);
-            let rollback_result = tx.rollback().await;
-            match rollback_result {
-                Ok(_) => println!("rollback success"),
-                Err(_) => println!("rollback error")
-            }
             return Err(Status::InternalServerError)
         }
     }
@@ -117,12 +103,7 @@ pub async fn create_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
     match transaction_result {
         Ok(_) => println!("successfully inserted transaction"),
         Err(e) => {
-            println!("error inserting transaction: {}", e.as_database_error().unwrap().message());
-            let rollback_result = tx.rollback().await;
-            match rollback_result {
-                Ok(_) => println!("rollback success"),
-                Err(_) => println!("rollback error")
-            }
+            println!("error inserting transaction: {}", e);
             return Err(Status::InternalServerError)
         }
     }
@@ -169,7 +150,7 @@ pub async fn accept_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
     }
 
     // only allow accept of challenge if user has enough funds
-    let balance_result = sqlx::query_as::<_,Balance>( "SELECT balance FROM lightningchess_balance WHERE username=$1")
+    let balance_result = sqlx::query_as::<_,Balance>( "SELECT * FROM lightningchess_balance WHERE username=$1")
         .bind(&user.username)
         .fetch_one(&**pool).await;
     match balance_result {
@@ -195,7 +176,7 @@ pub async fn accept_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
     };
 
     // deduct balance
-    let balance_result = sqlx::query_as::<_,Balance>( "UPDATE lightningchess_balance SET balance=balance - $1 WHERE username=$2")
+    let balance_result = sqlx::query_as::<_,Balance>( "UPDATE lightningchess_balance SET balance=balance - $1 WHERE username=$2 RETURNING *")
         .bind(challenge.sats.unwrap())
         .bind(&user.username)
         .fetch_one(&mut tx).await;
@@ -204,22 +185,12 @@ pub async fn accept_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
         Ok(balance) => {
             if balance.balance < 0 {
                 println!("balance is less than 0");
-                let rollback_result = tx.rollback().await;
-                match rollback_result {
-                    Ok(_) => println!("rollback success"),
-                    Err(_) => println!("rollback error")
-                }
                 return Err(Status::InternalServerError)
             }
             println!("updated balance")
         },
         Err(e) => {
             println!("error updating balance: {}", e);
-            let rollback_result = tx.rollback().await;
-            match rollback_result {
-                Ok(_) => println!("rollback success"),
-                Err(_) => println!("rollback error")
-            }
             return Err(Status::InternalServerError)
         }
     };
@@ -239,12 +210,7 @@ pub async fn accept_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
     match transaction_result {
         Ok(_) => println!("successfully inserted transaction"),
         Err(e) => {
-            println!("error inserting tx: {}", e.as_database_error().unwrap().message());
-            let rollback_result = tx.rollback().await;
-            match rollback_result {
-                Ok(_) => println!("rollback success"),
-                Err(_) => println!("rollback error")
-            }
+            println!("error inserting tx: {}", e);
             return Err(Status::InternalServerError)
         }
     }
@@ -273,22 +239,12 @@ pub async fn accept_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
                 }
                 Err(e) => {
                     println!("error: {}", e);
-                    let rollback_result = tx.rollback().await;
-                    match rollback_result {
-                        Ok(_) => println!("rollback success"),
-                        Err(_) => println!("rollback error")
-                    }
                     return Err(Status::InternalServerError)
                 }
             }
         },
         Err(e) => {
             println!("error creating on lichess: {}", e);
-            let rollback_result = tx.rollback().await;
-            match rollback_result {
-                Ok(_) => println!("rollback success"),
-                Err(_) => println!("rollback error")
-            }
             return Err(Status::InternalServerError)
         }
     };
@@ -306,12 +262,7 @@ pub async fn accept_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
             Ok(serde_json::to_string(&r).unwrap())
         },
         Err(e) => {
-            println!("update challenge in challenge accept: {}", e.as_database_error().unwrap().message());
-            let rollback_result = tx.rollback().await;
-            match rollback_result {
-                Ok(_) => println!("rollback success"),
-                Err(_) => println!("rollback error")
-            }
+            println!("update challenge in challenge accept: {}", e);
             return Err(Status::InternalServerError)
         }
     };
@@ -353,139 +304,11 @@ pub async fn lookup_challenge(user: User, pool: &State<Pool<Postgres>>, challeng
         .bind(challenge_id_int)
         .fetch_one(&**pool).await;
 
-    return match challenge {
+    match challenge {
         Ok(challenge) =>  {
-            let challenge_status = challenge.status.as_ref().unwrap();
             // only be able to look up own games
             if challenge.username != user.username && challenge.opp_username != user.username {
                 Err(Status::Unauthorized)
-            } else if challenge_status == "WAITING FOR ACCEPTANCE" {
-                Ok(serde_json::to_string(&challenge).unwrap())
-                // let lookup_invoice_response = crate::lightning::hodl_invoices::lookup_hodl_invoice(challenge.payment_addr.as_ref().unwrap()).await.unwrap();
-                // if lookup_invoice_response.state == "ACCEPTED" {
-                //     // create invoice for opponent, update database state to NEED OPP PAYMENT and return new value
-                //     // create preimage
-                //     let preimage_bytes: Vec<u8>  = rand::thread_rng()
-                //         .sample_iter(&Alphanumeric)
-                //         .take(32)
-                //         .collect();
-                //
-                //     let preimage =  base64::encode(&preimage_bytes);
-                //
-                //     let invoice_option = crate::lightning::hodl_invoices::add_hodl_invoice(&challenge, preimage_bytes).await;
-                //     let invoice = match invoice_option {
-                //         Some(i) => i,
-                //         None => return Err(Status::InternalServerError)
-                //     };
-                //
-                //     // save challenge to db
-                //     let status = "NEED OPP PAYMENT";
-                //     let pg_query_result = sqlx::query_as::<_,Challenge>("UPDATE challenge SET status=$1, opp_payment_preimage=$2, opp_payment_addr=$3, opp_payment_request=$4 WHERE id=$5 RETURNING *")
-                //         .bind(status)
-                //         .bind(&preimage)
-                //         .bind(&invoice.payment_addr)
-                //         .bind(&invoice.payment_request)
-                //         .bind(challenge_id_int)
-                //         .fetch_one(&**pool).await;
-                //
-                //     return match pg_query_result {
-                //         Ok(r) => {
-                //             Ok(serde_json::to_string(&r).unwrap())
-                //         },
-                //         Err(e) => {
-                //             println!("error: {}", e.as_database_error().unwrap().message());
-                //             Err(Status::InternalServerError)
-                //         }
-                //     }
-                // } else {
-                //     Ok(serde_json::to_string(&challenge).unwrap())
-                // }
-            } else if challenge_status == "NEED OPP PAYMENT" {
-                Ok(serde_json::to_string(&challenge).unwrap())
-                // only lookup status and stuff if it is the opponent's browser that is making the request
-                // if challenge.username == user.username {
-                //     return Ok(serde_json::to_string(&challenge).unwrap())
-                // }
-                // let invoice_option = crate::lightning::hodl_invoices::lookup_hodl_invoice(challenge.opp_payment_addr.as_ref().unwrap()).await;
-                // let invoice = match invoice_option {
-                //     Some(i) => i,
-                //     None => return Err(Status::InternalServerError)
-                // };
-                //
-                // return if invoice.state == "ACCEPTED" {
-                //     // mark the invoices as settled
-                //     let settle_success = crate::lightning::hodl_invoices::settle_hodl_invoice(challenge.payment_preimage.as_ref().unwrap()).await;
-                //     if settle_success {
-                //         println!("successfully settled payment_addr");
-                //     } else {
-                //         return Err(Status::InternalServerError)
-                //     }
-                //
-                //     let settle_opp_success = crate::lightning::hodl_invoices::settle_hodl_invoice(challenge.opp_payment_preimage.as_ref().unwrap()).await;
-                //     if settle_opp_success {
-                //         println!("successfully settled opp_payment_addr");
-                //     } else {
-                //         return Err(Status::InternalServerError)
-                //     }
-                //
-                //     // create on lichess
-                //     let url = format!("https://lichess.org/api/challenge/{}", &challenge.username);
-                //     let access_token = user.access_token;
-                //     let bearer = format!("Bearer {access_token}");
-                //     let body = parse_to_lichess_challenge(&challenge);
-                //     let resp = Client::new()
-                //         .post(url)
-                //         .json(&body)
-                //         .header("Authorization", bearer)
-                //         .send().await;
-                //
-                //     let lichess_challenge_response: LichessChallengeResponse = match resp {
-                //         Ok(res) => {
-                //             println!("Status: {}", res.status());
-                //             println!("Headers:\n{:#?}", res.headers());
-                //
-                //             let text = res.text().await;
-                //             match text {
-                //                 Ok(text) => {
-                //                     println!("text!: {}", text);
-                //                     serde_json::from_str(&text).unwrap()
-                //                 }
-                //                 Err(e) => {
-                //                     println!("error: {}", e);
-                //                     return Err(Status::InternalServerError)
-                //                 }
-                //             }
-                //         },
-                //         Err(e) => {
-                //             println!("error: {}", e);
-                //             return Err(Status::InternalServerError)
-                //         }
-                //     };
-                //
-                //     // save challenge to db
-                //     let status = "ACCEPTED";
-                //     let pg_query_result = sqlx::query_as::<_, Challenge>("UPDATE challenge SET status=$1, lichess_challenge_id=$2 WHERE id=$3 RETURNING *")
-                //         .bind(status)
-                //         .bind(lichess_challenge_response.challenge.id)
-                //         .bind(challenge_id_int)
-                //         .fetch_one(&**pool).await;
-                //
-                //     match pg_query_result {
-                //         Ok(r) => {
-                //             Ok(serde_json::to_string(&r).unwrap())
-                //         },
-                //         Err(e) => {
-                //             println!("error: {}", e.as_database_error().unwrap().message());
-                //             Err(Status::InternalServerError)
-                //         }
-                //     }
-                // } else {
-                //     Ok(serde_json::to_string(&challenge).unwrap())
-                // }
-            } else if challenge_status == "STARTED" {
-                // check to see if game finished in lichess
-                // if it is credit the winner and myself :), the accounts
-                Ok(serde_json::to_string(&challenge).unwrap())
             } else {
                 Ok(serde_json::to_string(&challenge).unwrap())
             }
