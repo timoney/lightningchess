@@ -49,7 +49,7 @@ async fn rocket() -> _ {
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect(&dbUrl)
+        .connect(&db_url)
         .await.unwrap();
 
     rocket::build()
