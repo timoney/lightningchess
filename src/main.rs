@@ -11,6 +11,7 @@ use rocket::fairing::AdHoc;
 use rocket::State;
 use rocket_dyn_templates::Template;
 use std::collections::HashMap;
+use std::env;
 use rocket::response::Redirect;
 use sqlx::postgres::PgPoolOptions;
 
@@ -43,11 +44,12 @@ async fn api_catch_all(_any_str: String) -> Redirect {
 
 #[launch]
 async fn rocket() -> _ {
-    let database_url = "postgresql://postgres:example@localhost:5432/postgres";
+
+    let db_url = env::var("DB_URL").unwrap();
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect(&database_url)
+        .connect(&dbUrl)
         .await.unwrap();
 
     rocket::build()
