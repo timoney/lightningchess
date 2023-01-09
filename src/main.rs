@@ -11,6 +11,7 @@ use rocket::fairing::AdHoc;
 use rocket::State;
 use rocket_dyn_templates::Template;
 use std::collections::HashMap;
+use rocket::response::Redirect;
 use sqlx::postgres::PgPoolOptions;
 
 pub mod guard;
@@ -19,11 +20,25 @@ pub mod lightning;
 pub mod endpoints;
 pub mod config;
 
+
 #[get("/")]
 async fn index(app_config: &State<AppConfig>) -> Template {
     let mut context = HashMap::new();
     context.insert("fe_url", app_config.fe_url.to_string());
     Template::render("index", &context)
+}
+
+#[get("/<any_str>", rank = 100)]
+async fn index_catch_all(app_config: &State<AppConfig>, any_str: String) -> Template {
+    println!("index catch all / {}", any_str);
+    let mut context = HashMap::new();
+    context.insert("fe_url", app_config.fe_url.to_string());
+    Template::render("index", &context)
+}
+
+#[get("/api/<_any_str>", rank = 2)]
+async fn api_catch_all(_any_str: String) -> Redirect {
+    Redirect::to("/login")
 }
 
 #[launch]
@@ -40,6 +55,8 @@ async fn rocket() -> _ {
         .manage(pool)
         .mount("/", routes![
             index,
+            index_catch_all,
+            api_catch_all,
             login,
             callback,
             profile,

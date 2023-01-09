@@ -43,7 +43,7 @@ pub async fn callback(code: String, app_config: &State<AppConfig>, cookies: &Coo
                 Ok(text) => {
                     println!("text!: {}", text);
                     let token_response: TokenResponse = serde_json::from_str(&text).unwrap();
-                    let cookie = Cookie::build("access_token", token_response.access_token)
+                    let cookie = Cookie::build("llchess_access_token", token_response.access_token)
                         .same_site(SameSite::None)
                         .secure(true)
                         .max_age(Duration::days(365))
@@ -54,7 +54,7 @@ pub async fn callback(code: String, app_config: &State<AppConfig>, cookies: &Coo
                     println!("error:\n{}", e);
                 }
             };
-            Some(Redirect::to(format!("{}", &app_config.url)))
+            Some(Redirect::to(format!("{}/dashboard", &app_config.url)))
         },
         Err(e) => {
             println!("error:\n{}", e);

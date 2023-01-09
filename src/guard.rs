@@ -9,7 +9,7 @@ pub mod auth {
     impl<'r> FromRequest<'r> for User {
         type Error = ();
         async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-            let access_token = request.cookies().get("access_token").map(|c| c.value());
+            let access_token = request.cookies().get("llchess_access_token").map(|c| c.value());
             match access_token {
                 Some(token) => {
                     let bearer = format!("Bearer {token}");
