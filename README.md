@@ -1,1 +1,1 @@
-Backend for lightning chess. 
+Backend for lightning chess written in Rust. 
