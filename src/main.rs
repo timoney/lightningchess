@@ -46,7 +46,7 @@ async fn api_catch_all(_any_str: String) -> Redirect {
 async fn rocket() -> _ {
 
     let db_url = env::var("DB_URL").unwrap();
-
+    println!("db_url {}", db_url);
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&db_url)

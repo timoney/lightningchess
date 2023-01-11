@@ -123,9 +123,18 @@ pub async fn balance(user: User, pool: &State<Pool<Postgres>>) -> Result<String,
 
     let balance_result = sqlx::query_as::<_,Balance>( "SELECT * FROM lightningchess_balance WHERE username=$1")
         .bind(&user.username)
-        .fetch_one(&**pool).await;
+        .fetch_optional(&**pool).await;
     match balance_result {
-        Ok(balance) => Ok(serde_json::to_string(&balance).unwrap()),
+        Ok(balance_option) => {
+            match balance_option {
+                Some(balance) => Ok(serde_json::to_string(&balance).unwrap()),
+                None => Ok(serde_json::to_string(&Balance {
+                    balance_id: 0,
+                    username: user.username,
+                    balance: 0
+                }).unwrap())
+            }
+        },
         Err(e) => {
             println!("error: {}", e);
             Err(Status::InternalServerError)

@@ -1,6 +1,6 @@
 use crate::models::{User, UserProfile};
 
-#[get("/profile")]
+#[get("/api/profile")]
 pub async fn profile(user: User) -> String {
     let user_profile: UserProfile = UserProfile {
         username: user.username
